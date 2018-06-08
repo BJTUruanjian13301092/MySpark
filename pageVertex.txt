@@ -1,0 +1,8 @@
+1 www.baidu.com
+2 www.sohu.com
+3 www.sina.com
+4 www.zhihu.com
+5 www.google.com
+6 www.tencent.com
+7 www.tmall.com
+8 www.jd.com
