@@ -10,8 +10,8 @@ import org.apache.spark.mllib.regression.LabeledPoint
 object SparkML {
 
   def main(args: Array[String]): Unit = {
-    //KMeansAnalyzer
-    SVMAnalyzer
+    KMeansAnalyzer
+    //SVMAnalyzer
   }
 
   /**
