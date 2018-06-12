@@ -5,13 +5,16 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.clustering.KMeans
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.optimization.L1Updater
-import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.recommendation.{ALS, Rating}
+import org.apache.spark.mllib.regression.{LabeledPoint, LinearRegressionWithSGD}
 
 object SparkML {
 
   def main(args: Array[String]): Unit = {
     //KMeansAnalyzer
-    SVMAnalyzer
+    //SVMAnalyzer
+    //LinearRegressionAnalyzer
+    ALSRecommendationAnalyzer
   }
 
   /**
@@ -61,7 +64,7 @@ object SparkML {
     */
   def SVMAnalyzer: Unit = {
 
-    val conf = new SparkConf().setAppName("KMeans")
+    val conf = new SparkConf().setAppName("SVM")
     conf.setMaster("local")
     val sc = new SparkContext(conf)
 
@@ -97,9 +100,72 @@ object SparkML {
     println("Training Error = " + trainErr)
 
     //预测
-    val predictVector = Vectors.dense(100.0, 100.0)
+    val predictVector = Vectors.dense(1.0, 100.0)
     val predictLabel = model.predict(predictVector)
     println("feature: " + predictVector + " belongs to label: " + predictLabel)
+  }
+
+  def LinearRegressionAnalyzer: Unit = {
+
+    val conf = new SparkConf().setAppName("LinearRegression")
+    conf.setMaster("local")
+    val sc = new SparkContext(conf)
+
+    // 加载和解析数据文件
+    val data = sc.textFile("mllib\\lpsa.data")
+    val parsedData = data.map {
+      line => val parts = line.split(",")
+        //label, feature
+        LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(' ').map(x => x.toDouble)))
+    }.cache()
+
+    //设置迭代次数并进行训练
+    val numIterations = 20
+    val model = LinearRegressionWithSGD.train(parsedData, numIterations)
+
+    //统计回归错误的样本比例
+    val valuesAndPreds = parsedData.map{
+      point => val prediction = model.predict(point.features)
+        (point.label, prediction)
+    }
+    val MSE = valuesAndPreds.map{ case(v, p) => math.pow((v - p), 2)}.reduce(_ + _)/valuesAndPreds.count
+    println("training Mean Squared Error = " + MSE)
+
+  }
+
+  def ALSRecommendationAnalyzer: Unit = {
+
+    val conf = new SparkConf().setAppName("ALS")
+    conf.setMaster("local")
+    val sc = new SparkContext(conf)
+
+    // 加载和解析数据文件
+    val data = sc.textFile("mllib\\als\\test.data")
+    val ratings = data.map(_.split(',') match {
+      case Array(user, item, rate) => Rating(user.toInt, item.toInt, rate.toDouble)
+    }).cache()
+
+    // 设置迭代次数和Rank
+    val numIterations = 20
+    val rank = 10
+    val model = ALS.train(ratings, rank, numIterations, 0.01)
+
+    // 对推荐模型进行评分
+    val usersProducts = ratings.map{ case Rating(user, product, rate) => (user, product)}
+    val predictions = model.predict(usersProducts).map{
+      case Rating(user, product, rate) => ((user, product), rate)
+    }
+
+    val ratesAndPreds = ratings.map{
+      case Rating(user, product, rate) => ((user, product), rate)
+    }.join(predictions)
+
+    val MSE = ratesAndPreds.map{
+      case ((user, product), (r1, r2)) => math.pow((r1- r2), 2)
+    }.reduce(_ + _)/ratesAndPreds.count
+
+    println("Mean Squared Error = " + MSE)
+
   }
 
 }
