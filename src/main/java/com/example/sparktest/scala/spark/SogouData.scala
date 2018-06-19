@@ -20,7 +20,7 @@ object SogouData {
       .getOrCreate()
 
     //Read Sougou File into RDD
-    val fileData = spark.sparkContext.textFile("data\\SogouQ.reduced\\SogouQ.reduced")
+    val fileData = spark.sparkContext.textFile("D:\\projects\\SparkProject\\SogouQ.reduced")
     //Map each row into a case class
     val splitRDD = fileData.flatMap(file => file.split("\n")).map(line => line.split("\t"))
       .map(attributes => SogouRow(attributes(0), attributes(1), attributes(2), attributes(3).replace(" ","").toInt, attributes(4)))
